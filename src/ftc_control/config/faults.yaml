@@ -1,0 +1,20 @@
+# Thruster Fault Configuration (Generic)
+
+/**:
+  ros__parameters:
+    thrusters:
+      num_thrusters: 8
+      max_thrust: 100.0
+      min_thrust: -100.0
+      rate_limit: 50.0    # N/s slew rate limit
+
+    fault_detection:
+      enable: true
+      threshold: 0.3      # 30% deviation from expected
+      window_size: 20     # samples before fault is confirmed
+
+    fault_tolerance:
+      reconfiguration_enable: true
+      # "pseudo_inverse", "weighted_pseudo_inverse", or "optimization"
+      method: "pseudo_inverse"
+      control_reallocation_enable: true

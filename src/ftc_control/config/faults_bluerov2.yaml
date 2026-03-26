@@ -1,0 +1,139 @@
+# Thruster Fault Configuration for BlueROV2 Heavy
+# 8 thrusters: T1-T4 horizontal vectored (45deg), T5-T8 vertical
+
+thrusters:
+  num_thrusters: 8
+  # T200 thrusters — symmetric limits scaled for simulator
+  max_thrust: 100.0
+  min_thrust: -100.0
+  rate_limit: 50.0    # N/s
+
+  # Horizontal vectored thrusters (T1-T4)
+  # Direction vectors use cos(45deg) = sin(45deg) = 0.707
+  T1:
+    name: "horizontal_front_right"
+    max_thrust: 100.0
+    position: [0.14, -0.10, 0.0]
+    direction: [0.707, -0.707, 0.0]
+
+  T2:
+    name: "horizontal_front_left"
+    max_thrust: 100.0
+    position: [0.14, 0.10, 0.0]
+    direction: [0.707, 0.707, 0.0]
+
+  T3:
+    name: "horizontal_rear_right"
+    max_thrust: 100.0
+    position: [-0.14, -0.10, 0.0]
+    direction: [0.707, 0.707, 0.0]
+
+  T4:
+    name: "horizontal_rear_left"
+    max_thrust: 100.0
+    position: [-0.14, 0.10, 0.0]
+    direction: [0.707, -0.707, 0.0]
+
+  # Vertical thrusters (T5-T8)
+  T5:
+    name: "vertical_front_right"
+    max_thrust: 100.0
+    position: [0.12, -0.22, 0.0]
+    direction: [0.0, 0.0, 1.0]
+
+  T6:
+    name: "vertical_front_left"
+    max_thrust: 100.0
+    position: [0.12, 0.22, 0.0]
+    direction: [0.0, 0.0, 1.0]
+
+  T7:
+    name: "vertical_rear_right"
+    max_thrust: 100.0
+    position: [-0.12, -0.22, 0.0]
+    direction: [0.0, 0.0, 1.0]
+
+  T8:
+    name: "vertical_rear_left"
+    max_thrust: 100.0
+    position: [-0.12, 0.22, 0.0]
+    direction: [0.0, 0.0, 1.0]
+
+# Fault injection scenarios for testing
+fault_scenarios:
+  scenario_1:
+    name: "T1_complete_failure"
+    description: "Complete loss of front-right horizontal thruster"
+    faults:
+      - thruster: 0
+        type: "complete_loss"
+        efficiency: 0.0
+        time_start: 10.0
+
+  scenario_2:
+    name: "T5_partial_failure"
+    description: "50% degradation of front-right vertical thruster"
+    faults:
+      - thruster: 4
+        type: "partial_loss"
+        efficiency: 0.5
+        time_start: 15.0
+
+  scenario_3:
+    name: "T3_stuck_failure"
+    description: "Rear-right horizontal thruster stuck at fixed value"
+    faults:
+      - thruster: 2
+        type: "stuck"
+        stuck_value: 20.0
+        time_start: 20.0
+
+  scenario_4:
+    name: "double_horizontal_failure"
+    description: "Loss of two diagonal horizontal thrusters (T1 and T4)"
+    faults:
+      - thruster: 0
+        type: "complete_loss"
+        efficiency: 0.0
+        time_start: 10.0
+      - thruster: 3
+        type: "complete_loss"
+        efficiency: 0.0
+        time_start: 10.0
+
+  scenario_5:
+    name: "double_vertical_failure"
+    description: "Loss of two vertical thrusters on starboard side (T5 and T7)"
+    faults:
+      - thruster: 4
+        type: "complete_loss"
+        efficiency: 0.0
+        time_start: 10.0
+      - thruster: 6
+        type: "complete_loss"
+        efficiency: 0.0
+        time_start: 10.0
+
+  scenario_6:
+    name: "mixed_failure"
+    description: "One horizontal and one vertical thruster failure"
+    # Sequential faults: partial horizontal at t=12, then vertical at t=18
+    faults:
+      - thruster: 1
+        type: "partial_loss"
+        efficiency: 0.3
+        time_start: 12.0
+      - thruster: 5
+        type: "complete_loss"
+        efficiency: 0.0
+        time_start: 18.0
+
+detection:
+  residual_threshold: 5.0   # Newtons
+  window_size: 20
+  confidence_level: 0.95
+
+accommodation:
+  reconfiguration_method: "control_allocation"
+  use_pseudo_inverse: true
+  weight_matrix_enabled: true

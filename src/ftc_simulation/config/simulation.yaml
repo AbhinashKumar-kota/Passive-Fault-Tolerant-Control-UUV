@@ -1,0 +1,21 @@
+# FTC Simulation Configuration
+
+simulator:
+  rate: 300.0             # Physics rate in Hz (recommended 300-1000 for UUVs)
+  window_width: 1920
+  window_height: 1080     # Set 0x0 for headless operation
+
+robot:
+  name: "GIRONA500"
+  spawn_position: [0.0, 0.0, 2.0]       # NED frame, 2m below surface
+  spawn_orientation: [0.0, 0.0, 0.0]    # [roll, pitch, yaw] radians
+
+experiment:
+  duration: 120.0         # seconds
+  log_data: true
+  log_path: "~/.ros/ftc_logs/"
+
+visualization:
+  show_trajectory: true
+  show_forces: true
+  show_faults: true

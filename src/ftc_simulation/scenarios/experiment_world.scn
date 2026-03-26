@@ -1,0 +1,194 @@
+<?xml version="1.0"?>
+<!--
+==============================================================================
+Stonefish Experiment World Scenario
+==============================================================================
+
+This file defines the underwater simulation environment for FTC experiments.
+It includes:
+  - Environment settings (ocean, atmosphere, coordinate frame)
+  - Material properties for physics simulation
+  - Visual appearance definitions (colors, textures)
+  - Static objects (seabed)
+  - Dynamic objects (waypoint markers)
+  - Robot inclusion (BlueROV2)
+
+Stonefish Scenario Structure:
+  <scenario>
+    <environment>   - World physics settings
+    <materials>     - Physical material properties
+    <looks>         - Visual appearance settings
+    <static>        - Fixed objects (terrain, structures)
+    <dynamic>       - Moving objects (markers, obstacles)
+    <include>       - Include other scenario files (robots)
+  </scenario>
+
+Coordinate System:
+  Stonefish uses NED (North-East-Down) world frame:
+    - X: North (positive = northward)
+    - Y: East (positive = eastward)
+    - Z: Down (positive = deeper underwater)
+
+Usage:
+  This file is loaded by launch/full_simulation.launch.py
+  Robot is spawned at position specified in <include> block
+
+==============================================================================
+-->
+<scenario>
+	<!-- ======================================================================
+	     ENVIRONMENT SETTINGS
+	     ====================================================================== -->
+	<environment>
+		<!-- 
+		NED Frame Origin:
+		  Defines the origin of the NED coordinate system on Earth.
+		  Latitude/longitude affect magnetic field calculations.
+		-->
+		<ned latitude="40.0" longitude="3.0"/>
+		
+		<!--
+		Ocean Settings:
+		  - density: Water density in kg/m³ (seawater ≈ 1025)
+		  - jerlov: Water clarity type (0.1=clear, 1.0=turbid)
+		  - waves: Surface wave height in meters
+		  - current: Water current velocity vector [x, y, z] in m/s
+		-->
+		<ocean>
+			<water density="1025.0" jerlov="0.25"/>
+			<waves height="0.5"/>  <!-- Calm water for controlled testing -->
+			<current type="uniform">
+				<velocity xyz="0.5 0.5 0.0"/>  <!-- No current -->
+			</current>
+		</ocean>
+		
+		<!--
+		Atmosphere Settings:
+		  Controls lighting and sun position for visualization.
+		  azimuth: Sun direction (degrees from North)
+		  elevation: Sun height above horizon (degrees)
+		-->
+		<atmosphere>
+			<sun azimuth="120.0" elevation="50.0"/>
+		</atmosphere>
+	</environment>
+
+	<!-- ======================================================================
+	     MATERIAL DEFINITIONS
+	     ====================================================================== -->
+	<!-- 
+	Materials define physical properties for collision/contact dynamics:
+	  - density: Mass per volume (kg/m³)
+	  - restitution: Bounciness (0=perfectly inelastic, 1=perfectly elastic)
+	
+	Friction table defines interaction between material pairs:
+	  - static: Friction coefficient when stationary
+	  - dynamic: Friction coefficient when sliding
+	-->
+	<materials>
+		<material name="Neutral" density="1000.0" restitution="0.5"/>
+		<material name="Rock" density="3000.0" restitution="0.8"/>
+		<material name="Fiberglass" density="1500.0" restitution="0.3"/>
+		<material name="Aluminium" density="2710.0" restitution="0.7"/>
+		<material name="Steel" density="7800.0" restitution="0.9"/>
+		<friction_table>
+			<friction material1="Neutral" material2="Neutral" static="0.5" dynamic="0.2"/>
+			<friction material1="Neutral" material2="Rock" static="0.2" dynamic="0.1"/>
+			<friction material1="Neutral" material2="Fiberglass" static="0.5" dynamic="0.2"/>
+			<friction material1="Neutral" material2="Aluminium" static="0.5" dynamic="0.2"/>
+			<friction material1="Rock" material2="Rock" static="0.9" dynamic="0.7"/>
+			<friction material1="Rock" material2="Fiberglass" static="0.6" dynamic="0.4"/>
+			<friction material1="Rock" material2="Aluminium" static="0.6" dynamic="0.3"/>
+			<friction material1="Fiberglass" material2="Fiberglass" static="0.5" dynamic="0.2"/>
+			<friction material1="Fiberglass" material2="Aluminium" static="0.5" dynamic="0.2"/>
+			<friction material1="Aluminium" material2="Aluminium" static="0.8" dynamic="0.5"/>
+		</friction_table>
+	</materials>
+
+	<!-- ======================================================================
+	     VISUAL APPEARANCE DEFINITIONS
+	     ====================================================================== -->
+	<!--
+	Looks define visual properties for rendering:
+	  - rgb/gray: Base color
+	  - roughness: Surface roughness (0=mirror, 1=fully diffuse)
+	  - metalness: Metallic appearance (0=non-metal, 1=metal)
+	  - texture: Optional texture file path
+	-->
+	<looks>
+		<look name="yellow" rgb="1.0 0.9 0.0" roughness="0.3"/>
+		<look name="gray" gray="0.3" roughness="0.4" metalness="0.5"/>
+		<look name="black" gray="0.1" roughness="0.4" metalness="0.5"/>
+		<look name="seabed" rgb="0.7 0.7 0.5" roughness="0.9"/>
+		<look name="propeller" gray="1.0" roughness="0.3"/>
+		<look name="duct" gray="0.1" roughness="0.4" metalness="0.5"/>
+		<look name="br2" gray="1.0" roughness="0.4" metalness="0.5" texture="bluerov2/br2.png"/>
+		<look name="blue" rgb="0.0 0.5 1.0" roughness="0.3"/>
+		<look name="marker" rgb="1.0 0.0 0.0" roughness="0.2"/>      <!-- Red for start/current -->
+		<look name="waypoint" rgb="0.0 1.0 0.0" roughness="0.2"/>   <!-- Green for waypoints -->
+	</looks>
+
+	<!-- ======================================================================
+	     STATIC OBJECTS (World Features)
+	     ====================================================================== -->
+	<!--
+	Seabed: Infinite horizontal plane at z=40m depth
+	  - type="plane": Infinite plane primitive
+	  - world_transform: Position and orientation in world frame
+	  - At z=40m in NED means 40 meters below water surface
+	-->
+	<static name="Bottom" type="plane">
+		<material name="Rock"/>
+		<look name="seabed"/>
+		<world_transform rpy="0.0 0.0 0.0" xyz="0.0 0.0 40.0"/>
+	</static>
+
+	<!-- ======================================================================
+	     DYNAMIC OBJECTS (Waypoint Markers)
+	     ====================================================================== -->
+	<!--
+	Waypoint markers: Visual spheres for trajectory visualization
+	  - type="sphere": Spherical primitive
+	  - physics="submerged": Subject to hydrodynamic forces
+	  - buoyant="false": Neutrally buoyant (won't float or sink)
+	  
+	Note: These are for visualization only, not physical obstacles
+	-->
+	
+	<!-- Waypoint 1: Green sphere at (5, 0, 3) - first target -->
+	<dynamic name="Waypoint1" type="sphere" physics="submerged" buoyant="false">
+		<dimensions radius="0.2"/>
+		<origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+		<material name="Neutral"/>
+		<look name="waypoint"/>  <!-- Green -->
+		<world_transform rpy="0.0 0.0 0.0" xyz="5.0 0.0 3.0"/>
+	</dynamic>
+
+	<!-- Waypoint 2: Red sphere at (10, 5, 3) - second target -->
+	<dynamic name="Waypoint2" type="sphere" physics="submerged" buoyant="false">
+		<dimensions radius="0.2"/>
+		<origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+		<material name="Neutral"/>
+		<look name="marker"/>  <!-- Red -->
+		<world_transform rpy="0.0 0.0 0.0" xyz="10.0 5.0 3.0"/>
+	</dynamic>
+
+	<!-- ======================================================================
+	     ROBOT INCLUSION
+	     ====================================================================== -->
+	<!--
+	Include BlueROV2 robot from separate scenario file.
+	Arguments are passed to the included file:
+	  - vehicle_name: ROS2 topic namespace
+	  - position: Spawn location [x, y, z] in meters (NED frame)
+	  - orientation: Spawn attitude [roll, pitch, yaw] in radians
+	
+	Spawn at (0, 0, 1): 1 meter below surface, at origin
+	-->
+	<include file="bluerov2.scn">
+		<arg name="vehicle_name" value="BLUEROV2"/>
+		<arg name="position" value="0.0 0.0 1.0"/>
+		<arg name="orientation" value="0.0 0.0 0.0"/>
+	</include>
+
+</scenario>

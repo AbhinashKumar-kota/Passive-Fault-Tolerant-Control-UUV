@@ -1,0 +1,36 @@
+# Sliding Mode Controller (SMC) Configuration
+
+/**:
+  ros__parameters:
+    controller:
+      type: "smc"
+
+      # Control Gains
+      gains:
+        # Sliding surface slope [surge, sway, heave, roll, pitch, yaw]
+        Lambda: [2.0, 2.0, 3.0, 1.0, 1.0, 2.0]
+
+        # Switching gain — must exceed matched uncertainty bound
+        K: [10.0, 10.0, 15.0, 5.0, 5.0, 8.0]
+
+        # Boundary layer thickness — larger reduces chattering but allows more steady-state error
+        Phi: [0.1, 0.1, 0.1, 0.05, 0.05, 0.1]
+
+        # Reaching law coefficient
+        eta_reach: 5.0
+
+      # Saturation function: "sign", "sat", or "tanh"
+      saturation:
+        type: "tanh"
+
+      # Fractional uncertainty bounds for robust control design
+      uncertainty:
+        delta_M: 0.1   # 10% mass/inertia uncertainty
+        delta_D: 0.2   # 20% damping uncertainty (harder to model)
+        delta_g: 0.1   # 10% restoring forces uncertainty
+
+      # Adaptive sliding mode — online switching gain adaptation
+      adaptive:
+        enable: false
+        gamma: 0.01
+        max_estimate: 50.0

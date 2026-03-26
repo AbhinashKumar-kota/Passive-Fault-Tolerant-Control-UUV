@@ -1,0 +1,27 @@
+Third-Party Attributions
+========================
+
+BlueROV2 3D Mesh Assets
+------------------------
+The BlueROV2 mesh and texture files located in:
+  src/ftc_simulation/data/bluerov2/
+
+are sourced from the following repository:
+  Repository : https://github.com/bvibhav/stonefish_bluerov2
+  Author     : bvibhav
+  License    : Apache License 2.0
+
+These files are used under the terms of the Apache License, Version 2.0.
+A copy of the Apache 2.0 license is available at:
+  https://www.apache.org/licenses/LICENSE-2.0
+
+Stonefish ROS2 Interface
+------------------------
+This project depends on stonefish_ros2, developed by Patryk Cieślak (GPL-3.0).
+It is an external dependency and is NOT included in this repository.
+  Repository : https://github.com/patrykcieslak/stonefish_ros2
+
+If you use the Stonefish simulator in your research, please cite:
+  Cieślak, P., "Stonefish: An Advanced Open-Source Simulation Tool Designed
+  for Marine Robotics, With a ROS Interface", OCEANS 2019 - Marseille,
+  DOI: 10.1109/OCEANSE.2019.8867434

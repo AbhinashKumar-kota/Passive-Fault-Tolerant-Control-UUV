@@ -1,0 +1,527 @@
+<?xml version="1.0"?>
+<!--
+==============================================================================
+BlueROV2 Heavy Robot Definition for Stonefish Simulator
+==============================================================================
+
+This file defines the BlueROV2 Heavy underwater vehicle for simulation,
+including:
+  - Physical structure (hull, internal components, weights)
+  - Thruster configuration (8 thrusters in vectored layout)
+  - Sensor suite (odometry, IMU, DVL, pressure, cameras, sonar)
+  - ROS2 interface (subscribers for commands, publishers for sensors)
+
+BlueROV2 Heavy Specifications:
+------------------------------
+  - Mass: ~11.5 kg (in air)
+  - Dimensions: ~457 x 338 x 254 mm
+  - Thrusters: 8x T200 (Blue Robotics)
+    - 4 horizontal vectored (45°) for surge/sway/yaw
+    - 4 vertical for heave/roll/pitch
+  - Buoyancy: Slightly positive (floats to surface when powered off)
+
+Thruster Layout (Top View):
+---------------------------
+         FRONT
+    T2 ↖     ↗ T1     (horizontal, 45° inward)
+        ╲   ╱
+         ╲ ╱
+          ●  (CoG)
+         ╱ ╲
+        ╱   ╲
+    T4 ↙     ↘ T3     (horizontal, 45° inward)
+         REAR
+         
+    T6 ●     ● T5     (vertical, front pair)
+    T8 ●     ● T7     (vertical, rear pair)
+
+Coordinate System (Body Frame):
+  - Origin: Geometric center of vehicle
+  - X: Forward (surge)
+  - Y: Right/Starboard (sway)  
+  - Z: Down (heave)
+
+ROS2 Interface:
+  Subscribers:
+    - /<vehicle_name>/setpoint/pwm: Thruster PWM commands (8 values)
+  
+  Publishers:
+    - /<vehicle_name>/odometry: Ground truth pose and velocity
+    - /<vehicle_name>/INS: Integrated Navigation System data
+    - /<vehicle_name>/imu: IMU angular rates and orientation
+    - /<vehicle_name>/dvl_sim: Doppler Velocity Log data
+    - /<vehicle_name>/pressure: Depth pressure sensor
+    - /<vehicle_name>/gps: GPS fixes (when surfaced)
+    - /<vehicle_name>/left, /right: Stereo camera images
+    - /<vehicle_name>/multibeam: Multibeam sonar data
+
+Usage:
+  This file is included by experiment_world.scn with arguments:
+    - vehicle_name: ROS2 namespace
+    - position: Spawn position [x, y, z]
+    - orientation: Spawn attitude [roll, pitch, yaw]
+
+==============================================================================
+-->
+<scenario>
+	<!-- Additional visual appearances for this robot -->
+	<looks>
+		<look name="br2" gray="1.0" roughness="0.4" metalness="0.5" texture="bluerov2/br2.png"/>
+		<look name="blue" rgb="0.0 0.5 1.0" roughness="0.3"/>
+	</looks>
+
+	<!-- ======================================================================
+	     ROBOT DEFINITION
+	     ====================================================================== -->
+	<!--
+	Robot container:
+	  - name: Vehicle identifier (from launch argument)
+	  - fixed: false = free to move in water
+	  - self_collisions: false = don't check internal part collisions
+	-->
+	<robot name="$(arg vehicle_name)" fixed="false" self_collisions="false">
+		
+		<!-- ==================================================================
+		     BASE LINK (Vehicle Hull and Internal Components)
+		     ================================================================== -->
+		<!--
+		Compound body composed of:
+		  - External parts: Hull geometry (collision + visual)
+		  - Internal parts: Buoyancy and ballast elements
+		
+		physics="submerged": Subject to full hydrodynamic forces
+		-->
+		<base_link name="base_link" type="compound" physics="submerged">
+			
+			<!-- ============================================================
+			     EXTERNAL PARTS (Hull Geometry)
+			     ============================================================ -->
+			<!--
+			Main hull body:
+			  - Uses mesh files for accurate geometry
+			  - physical mesh: Simplified for collision detection
+			  - visual mesh: Detailed for rendering
+			  - thickness: Wall thickness for buoyancy calculation
+			-->
+			<external_part name="HullBottom" type="model" physics="submerged" buoyant="false">
+				<physical>
+					<mesh filename="bluerov2/bluerov2_phy.obj" scale="1"/>
+					<origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.0"/>
+					<thickness value="0.005"/>
+				</physical>
+				<visual>
+					<mesh filename="bluerov2/bluerov2.obj" scale="1"/>
+					<origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.0"/>
+				</visual>
+				<material name="Fiberglass"/>
+				<look name="br2"/>
+				<compound_transform rpy="0 0.0 0.0" xyz="-0.0 0.0 0.0"/>
+			</external_part>
+
+			<!-- Heavy-lift frame (adds structural elements for 8-thruster config) -->
+			<external_part name="HeavyFit" type="model" physics="submerged" buoyant="false">
+				<physical>
+					<mesh filename="bluerov2/bluerov2_ring.obj" scale="1"/>
+					<origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.03"/>
+					<thickness value="0.005"/>
+				</physical>
+				<visual>
+					<mesh filename="bluerov2/bluerov2_wings.obj" scale="1"/>
+					<origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.0"/>
+				</visual>
+				<material name="Fiberglass"/>
+				<look name="black"/>
+				<compound_transform rpy="0 0.0 0.0" xyz="-0.0 0.0 0.0"/>
+			</external_part>
+
+			<!-- ============================================================
+			     INTERNAL PARTS (Buoyancy and Ballast)
+			     ============================================================ -->
+			<!--
+			Internal parts for buoyancy:
+			  - buoyant="true": Displaced water provides lift
+			  - These represent foam blocks that provide positive buoyancy
+			  - Positioned symmetrically to maintain neutral trim
+			-->
+			
+			<!-- Buoyancy foam blocks (4 corners) -->
+			<internal_part name="BackLeft" type="box" physics="submerged" buoyant="true">
+				<dimensions xyz="0.2 0.15 0.091"/>
+				<origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+				<material name="Neutral"/>
+				<look name="None"/>
+				<mass value="0.025"/>
+				<compound_transform rpy="0.0 0.0 0.0" xyz="-0.1 -0.1 0.0"/>
+			</internal_part>
+
+			<internal_part name="BackRight" type="box" physics="submerged" buoyant="true">
+				<dimensions xyz="0.2 0.15 0.091"/>
+				<origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+				<material name="Neutral"/>
+				<look name="None"/>
+				<mass value="0.025"/>
+				<compound_transform rpy="0.0 0.0 0.0" xyz="-0.1 0.1 0.0"/>
+			</internal_part>
+
+			<internal_part name="FrontLeft" type="box" physics="submerged" buoyant="true">
+				<dimensions xyz="0.2 0.15 0.091"/>
+				<origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+				<material name="Neutral"/>
+				<look name="None"/>
+				<mass value="0.025"/>
+				<compound_transform rpy="0.0 0.0 0.0" xyz="0.09 -0.1 0.0"/>
+			</internal_part>
+
+			<internal_part name="FrontRight" type="box" physics="submerged" buoyant="true">
+				<dimensions xyz="0.2 0.15 0.091"/>
+				<origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+				<material name="Neutral"/>
+				<look name="None"/>
+				<mass value="0.025"/>
+				<compound_transform rpy="0.0 0.0 0.0" xyz="0.09 0.1 0.0"/>
+			</internal_part>
+
+			<!-- ============================================================
+			     BALLAST WEIGHTS (Center of Gravity Adjustment)
+			     ============================================================ -->
+			<!--
+			Steel weights placed below center of buoyancy:
+			  - Creates "metacentric height" for passive roll/pitch stability
+			  - CoG below CoB = pendulum stability
+			  - Placed at z=0.1 (below geometric center)
+			-->
+			
+			<!-- Main center weight (2 kg) -->
+			<internal_part name="WeightCenter" type="sphere" physics="submerged" buoyant="false">
+				<dimensions radius="0.01"/>
+				<origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+				<material name="Steel"/>
+				<look name="black"/>
+				<mass value="2"/>
+				<compound_transform rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.1"/>
+			</internal_part>
+
+			<!-- Side weights for roll stability (1 kg each) -->
+			<internal_part name="WeightLeft" type="sphere" physics="submerged" buoyant="false">
+				<dimensions radius="0.01"/>
+				<origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+				<material name="Steel"/>
+				<look name="black"/>
+				<mass value="1"/>
+				<compound_transform rpy="0.0 0.0 0.0" xyz="0.0 -0.075 0.1"/>
+			</internal_part>
+
+			<internal_part name="WeightRight" type="sphere" physics="submerged" buoyant="false">
+				<dimensions radius="0.01"/>
+				<origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+				<material name="Steel"/>
+				<look name="black"/>
+				<mass value="1"/>
+				<compound_transform rpy="0.0 0.0 0.0" xyz="0.0 0.075 0.1"/>
+			</internal_part>
+		</base_link>
+		
+		<!-- ==================================================================
+		     THRUSTER ACTUATORS (8 T200 Thrusters)
+		     ================================================================== -->
+		<!--
+		Thruster Model:
+		  - thrust_coeff: Thrust coefficient (N per RPM²)
+		  - torque_coeff: Reaction torque coefficient
+		  - max_rpm: Maximum propeller RPM
+		  - inverted: If true, positive command produces negative thrust
+		              (compensates for propeller spin direction)
+		
+		Propeller:
+		  - diameter: Propeller diameter in meters
+		  - right: true = right-handed (clockwise when viewed from behind)
+		
+		Origin xyz: Position relative to base_link center [x, y, z] meters
+		Origin rpy: Orientation [roll, pitch, yaw] radians
+		  - Horizontal thrusters: yaw angle determines thrust direction
+		  - Vertical thrusters: pitch = -90° points thrust downward
+		-->
+		
+		<!-- ============================================================
+		     HORIZONTAL THRUSTERS (T1-T4) - Vectored at 45°
+		     ============================================================ -->
+		
+		<!-- Thruster 1: Front-Right Horizontal -->
+		<!-- Position: Front-right corner, angled 45° CCW from forward -->
+		<!-- inverted=true: Positive PWM causes thrust in -45° direction -->
+		<actuator name="FrontRight" type="thruster">
+			<link name="base_link"/>
+			<origin xyz="0.1355 0.1 0.0725" rpy="0 0 -0.7853981634"/>  <!-- -45° yaw -->
+			<specs thrust_coeff="0.167" torque_coeff="0.016" max_rpm="3600.0" inverted="false"/>
+			<propeller diameter="0.076" right="true">
+				<mesh filename="bluerov2/ccw.obj" scale="1.0"/>
+				<material name="Neutral"/>
+				<look name="blue"/>
+			</propeller>
+		</actuator>
+
+		<!-- Thruster 2: Front-Left Horizontal -->
+		<!-- Position: Front-left corner, angled 45° CW from forward -->
+		<!-- inverted=true: Positive PWM causes thrust in +45° direction -->
+		<actuator name="FrontLeft" type="thruster">
+			<link name="base_link"/>
+			<origin xyz="0.1355 -0.1 0.0725" rpy="0 0 0.7853981634"/>  <!-- +45° yaw -->
+			<specs thrust_coeff="0.167" torque_coeff="0.016" max_rpm="3600.0" inverted="false"/>
+			<propeller diameter="0.076" right="true">
+				<mesh filename="bluerov2/ccw.obj" scale="1.0"/>
+				<material name="Neutral"/>
+				<look name="blue"/>
+			</propeller>
+		</actuator>
+
+		<!-- Thruster 3: Back-Right Horizontal -->
+		<!-- Position: Rear-right corner, angled 135° CCW from forward -->
+		<!-- inverted=false: Normal thrust direction -->
+		<actuator name="BackRight" type="thruster">
+			<link name="base_link"/>
+			<origin xyz="-0.1475 0.1 0.0725" rpy="0 0 -2.3561944902"/>  <!-- -135° yaw -->
+			<specs thrust_coeff="0.167" torque_coeff="0.016" max_rpm="3600.0" inverted="false"/>
+			<propeller diameter="0.076" right="false">
+				<mesh filename="bluerov2/cw.obj" scale="1.0"/>
+				<material name="Neutral"/>
+				<look name="blue"/>
+			</propeller>
+		</actuator>
+
+		<!-- Thruster 4: Back-Left Horizontal -->
+		<!-- Position: Rear-left corner, angled 135° CW from forward -->
+		<!-- inverted=false: Normal thrust direction -->
+		<actuator name="BackLeft" type="thruster">
+			<link name="base_link"/>
+			<origin xyz="-0.1475 -0.1 0.0725" rpy="0 0 2.3561944902"/>  <!-- +135° yaw -->
+			<specs thrust_coeff="0.167" torque_coeff="0.016" max_rpm="3600.0" inverted="false"/>
+			<propeller diameter="0.076" right="false">
+				<mesh filename="bluerov2/cw.obj" scale="1.0"/>
+				<material name="Neutral"/>
+				<look name="blue"/>
+			</propeller>
+		</actuator>
+
+		<!-- ============================================================
+		     VERTICAL THRUSTERS (T5-T8) - Point Downward
+		     ============================================================ -->
+		
+		<!-- Thruster 5: Dive Front-Right -->
+		<!-- Position: Front-right, vertical orientation -->
+		<!-- Positive thrust pushes vehicle down (deeper) -->
+		<actuator name="DiveFrontRight" type="thruster">
+			<link name="base_link"/>
+			<origin xyz="0.12 0.218 0.0" rpy="0 -1.5707963268 0"/>  <!-- -90° pitch = down -->
+			<specs thrust_coeff="0.167" torque_coeff="0.016" max_rpm="3600.0" inverted="false"/>
+			<propeller diameter="0.076" right="true">
+				<mesh filename="bluerov2/cw.obj" scale="1.0"/>
+				<material name="Neutral"/>
+				<look name="blue"/>
+			</propeller>
+		</actuator>
+
+		<!-- Thruster 6: Dive Front-Left -->
+		<!-- inverted=true: Compensates for opposite spin direction -->
+		<actuator name="DiveFrontLeft" type="thruster">
+			<link name="base_link"/>
+			<origin xyz="0.12 -0.218 0.0" rpy="0 -1.5707963268 0"/>
+			<specs thrust_coeff="0.167" torque_coeff="0.016" max_rpm="3600.0" inverted="false"/>
+			<propeller diameter="0.076" right="false">
+				<mesh filename="bluerov2/ccw.obj" scale="1.0"/>
+				<material name="Neutral"/>
+				<look name="blue"/>
+			</propeller>
+		</actuator>
+		
+		<!-- Thruster 7: Dive Back-Right -->
+		<!-- inverted=true: Compensates for opposite spin direction -->
+		<actuator name="DiveBackRight" type="thruster">
+			<link name="base_link"/>
+			<origin xyz="-0.12 0.218 0.0" rpy="0 -1.5707963268 0"/>
+			<specs thrust_coeff="0.167" torque_coeff="0.016" max_rpm="3600.0" inverted="false"/>
+			<propeller diameter="0.076" right="false">
+				<mesh filename="bluerov2/ccw.obj" scale="1.0"/>
+				<material name="Neutral"/>
+				<look name="blue"/>
+			</propeller>
+		</actuator>
+
+		<!-- Thruster 8: Dive Back-Left -->
+		<!-- inverted=false: Normal thrust direction -->
+		<actuator name="DiveBackLeft" type="thruster">
+			<link name="base_link"/>
+			<origin xyz="-0.12 -0.218 0.0" rpy="0 -1.5707963268 0"/>
+			<specs thrust_coeff="0.167" torque_coeff="0.016" max_rpm="3600.0" inverted="false"/>
+			<propeller diameter="0.076" right="true">
+				<mesh filename="bluerov2/cw.obj" scale="1.0"/>
+				<material name="Neutral"/>
+				<look name="blue"/>
+			</propeller>
+		</actuator>
+
+		<!-- ==================================================================
+		     SENSOR SUITE
+		     ================================================================== -->
+		
+		<!-- ============================================================
+		     ODOMETRY SENSOR (Ground Truth)
+		     ============================================================ -->
+		<!--
+		Perfect odometry for algorithm development:
+		  - Provides true pose and velocity (no noise option shown)
+		  - rate: Publication rate in Hz
+		  - Used with use_ground_truth=true in control stack
+		-->
+		<sensor name="odometry" type="odometry" rate="100.0">
+			<!-- <noise position="0.05" velocity="0.01" angle="0.1" angular_velocity="0.05"/> -->
+			<link name="base_link"/>
+			<origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.0"/>
+			<ros_publisher topic="/$(arg vehicle_name)/odometry"/>
+		</sensor>
+
+		<!-- ============================================================
+		     INS (Inertial Navigation System)
+		     ============================================================ -->
+		<!--
+		Integrated navigation combining IMU, DVL, GPS, and pressure:
+		  - noise: Angular velocity and linear acceleration noise levels
+		  - external_sensors: References to other sensors for fusion
+		-->
+		<sensor name="INS" rate="100.0" type="ins">
+			<output_frame rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.0"/>
+			<noise angular_velocity="0.00001745" linear_acceleration="0.00005"/>
+			<external_sensors dvl="dvl" gps="gps" pressure="pressure"/>
+			<origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.0"/>
+			<link name="base_link"/>
+			<ros_publisher topic="/$(arg vehicle_name)/INS"/>
+		</sensor>
+
+		<!-- ============================================================
+		     PRESSURE SENSOR (Depth)
+		     ============================================================ -->
+		<!--
+		Pressure sensor for depth estimation:
+		  - noise: Pressure measurement noise in Pascals
+		  - Depth = (pressure - atmospheric) / (density * g)
+		-->
+		<sensor name="pressure" type="pressure" rate="5.0">
+			<link name="base_link"/>
+			<origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.0"/>
+			<noise pressure="5.0"/>
+			<ros_publisher topic="/$(arg vehicle_name)/pressure"/>
+		</sensor>
+
+		<!-- ============================================================
+		     IMU (Inertial Measurement Unit)
+		     ============================================================ -->
+		<!--
+		Filtered IMU output:
+		  - Provides orientation and angular velocity
+		  - noise: Angle and angular rate noise
+		-->
+		<sensor name="imu_filter" type="imu" rate="20.0">
+			<link name="base_link"/>
+			<origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.0"/>
+			<noise angle="0.000001745" angular_velocity="0.00001745"/>
+			<ros_publisher topic="/$(arg vehicle_name)/imu"/>
+		</sensor>
+
+		<!-- ============================================================
+		     GPS (Global Positioning System)
+		     ============================================================ -->
+		<!--
+		GPS for surface position fixes:
+		  - Only works when vehicle is at surface (antenna above water)
+		  - noise: Position noise in meters (NED frame)
+		-->
+		<sensor name="gps" type="gps" rate="1.0">
+			<link name="base_link"/>
+			<origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 -0.15"/>  <!-- Antenna on top -->
+			<noise ned_position="0.5"/>
+			<ros_publisher topic="/$(arg vehicle_name)/gps"/>
+		</sensor>
+
+		<!-- ============================================================
+		     DVL (Doppler Velocity Log)
+		     ============================================================ -->
+		<!--
+		Doppler velocity measurement:
+		  - beam_angle: Acoustic beam angle from vertical
+		  - range: Min/max altitude for bottom tracking
+		  - noise: Velocity and altitude measurement noise
+		  - Mounted on bottom (rpy=pi,0,0 for downward-facing)
+		-->
+		<sensor name="dvl" type="dvl" rate="5.0">
+			<link name="base_link"/>
+			<origin rpy="3.1416 0.0 0.0" xyz="0.0 0.0 0.0"/>  <!-- Facing down -->
+			<specs beam_angle="30.0"/>
+			<range velocity="9.0 9.0 9.0" altitude_min="0.2" altitude_max="100.0"/>
+			<noise velocity="0.0015" altitude="0.001"/>
+			<ros_publisher topic="/$(arg vehicle_name)/dvl_sim" 
+						   altitude_topic="/$(arg vehicle_name)/altitude"/>
+		</sensor>
+
+		<!-- ============================================================
+		     STEREO CAMERAS
+		     ============================================================ -->
+		<!--
+		Stereo camera pair for visual perception:
+		  - resolution_x/y: Image dimensions in pixels
+		  - horizontal_fov: Field of view in degrees
+		  - baseline: Distance between camera centers (negative = right camera offset)
+		-->
+		<sensor name="camera_left" rate="30.0" type="camera">
+			<specs resolution_x="640" resolution_y="480" horizontal_fov="75.0"/>
+			<origin xyz="0.16 -0.0725 0.15" rpy="1.571 0.0 1.571"/>
+			<link name="base_link"/>
+			<ros_publisher topic="/$(arg vehicle_name)/left"/>
+		</sensor>
+		<sensor name="camera_right" rate="30.0" type="camera">
+			<specs resolution_x="640" resolution_y="480" horizontal_fov="75.0" baseline="-60.5"/>
+			<origin xyz="0.16 0.0725 0.15" rpy="1.571 0.0 1.571"/>
+			<link name="base_link"/>
+			<ros_publisher topic="/$(arg vehicle_name)/right"/>
+		</sensor>
+
+		<!-- ============================================================
+		     MULTIBEAM SONAR
+		     ============================================================ -->
+		<!--
+		Multibeam sonar for obstacle detection:
+		  - fov: Angular field of view in degrees
+		  - steps: Number of beams across FOV
+		  - range: Min/max detection distance
+		-->
+		<sensor name="multibeam" rate="10.0" type="multibeam">
+			<specs fov="90.0" steps="128"/>
+			<range distance_min="0.25" distance_max="50.0"/>
+			<noise distance="0.1"/>
+			<history samples="1"/>
+			<origin xyz="0.2 0.0 0.2" rpy="0.0 -0.0 0.0"/>
+			<link name="base_link"/>
+			<ros_publisher topic="/$(arg vehicle_name)/multibeam"/>
+		</sensor>
+
+		<!-- ==================================================================
+		     SPAWN CONFIGURATION
+		     ================================================================== -->
+		<!--
+		Initial world position and orientation:
+		  - xyz: Position from launch argument
+		  - rpy: Orientation from launch argument
+		-->
+		<world_transform xyz="$(arg position)" rpy="$(arg orientation)"/>
+		
+		<!-- ==================================================================
+		     ROS2 INTERFACE
+		     ================================================================== -->
+		<!--
+		Thruster command subscriber:
+		  - Expects Float64MultiArray with 8 PWM values
+		  - Order matches actuator definition order: T1-T8
+		  - PWM range: typically -100 to +100 or 0 to 1
+		-->
+		<ros_subscriber thrusters="/$(arg vehicle_name)/setpoint/pwm"/>
+		<!-- <ros_publisher thrusters="/$(arg vehicle_name)/thruster_state"/> -->
+	</robot>
+</scenario>
