@@ -60,7 +60,7 @@ Eigen::Matrix<double, 6, 1> IFTSMCController::compute_i_ftsmc(
     Eigen::Matrix<double, 6, 6> J = getRotationMatrix(eta);
     Eigen::Matrix<double, 6, 1> sig_e_eta;
     for(int i=0; i<6; ++i) sig_e_eta(i) = Ki_diag(i) * sig(e_eta(i), beta);
-    Eigen::Matrix<double, 6, 1> nu_c = J.inverse() * (dot_eta_d + 10 * sig_e_eta + 0*0.2 * e_eta);
+    Eigen::Matrix<double, 6, 1> nu_c = J.inverse() * (dot_eta_d + 10 * sig_e_eta);
     Eigen::Matrix<double, 6, 1> dot_nu_c = (nu_c - nu_c_old_) / dt;
     nu_c_old_ = nu_c;
 
