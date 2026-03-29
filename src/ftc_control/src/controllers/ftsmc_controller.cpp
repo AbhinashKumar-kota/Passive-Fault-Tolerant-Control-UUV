@@ -43,18 +43,18 @@ Eigen::Matrix<double, 6, 1> FTSMCController::compute_ftsmc(
 {
     // Tuning parameters
     Eigen::Matrix<double, 6, 1> alpha_diag, beta_diag;
-    alpha_diag << 10.2, 10.2, 10.2, 9.8, 9.8, 10.0;
-    beta_diag  << 0.99, 0.99, 0.99, 0.99, 0.99, 0.99;
+    alpha_diag << 10.0, 10.0, 10.0, 10.0, 10.0, 10.0;
+    beta_diag  << 0.9, 0.9, 0.9, 0.9, 0.9, 0.9;
 
     Eigen::Matrix<double, 6, 1> k1_diag, k2_diag, gamma_diag;
-    k1_diag    << 2.5, 2.5, 2.5, 2.0, 2.0, 2.2;
-    k2_diag    << 2.5, 2.5, 2.5, 2.0, 2.0, 2.2;
-    gamma_diag << 0.99, 0.99, 0.99, 0.99, 0.99, 0.99;
+    k1_diag    << 2.5, 2.5, 2.5, 2.5, 2.5, 2.5;
+    k2_diag    << 2.5, 2.5, 2.5, 2.5, 2.5, 2.5;
+    gamma_diag << 0.9, 0.9, 0.9, 0.9, 0.9, 0.9;
 
     Eigen::Matrix<double, 6, 1> w1_diag, w2_diag, rho_diag;
-    w1_diag    << 2.2, 2.2, 2.2, 2.1, 2.1, 2.1;
-    w2_diag    << 5.5, 5.5, 5.5, 5.2, 5.2, 5.2;
-    rho_diag   << 0.99, 0.99, 0.99, 0.99, 0.99, 0.99;
+    w1_diag    << 2.2, 2.2, 2.2, 2.2, 2.2, 2.2;
+    w2_diag    << 5.5, 5.5, 5.5, 5.5, 5.5, 5.5;
+    rho_diag   << 0.9, 0.9, 0.9, 0.9, 0.9, 0.9;
 
     // Kinematic Control
     Eigen::Matrix<double, 6, 1> e_eta = eta_d - eta;
