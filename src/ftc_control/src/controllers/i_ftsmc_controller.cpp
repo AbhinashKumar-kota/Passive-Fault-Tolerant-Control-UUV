@@ -42,7 +42,7 @@ Eigen::Matrix<double, 6, 1> IFTSMCController::compute_i_ftsmc(
     double dt)
 {
     // Tuning parameters
-    const double beta = 0.99;
+    const double beta = 0.9;
 
     Eigen::Matrix<double, 6, 1> Ki_diag, Gamma_diag;
     Ki_diag    << 0.1, 0.1, 0.1, 0.1, 0.1, 0.1;
