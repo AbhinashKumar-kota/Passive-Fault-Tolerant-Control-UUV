@@ -33,7 +33,7 @@ Tested on the **BlueROV2 Heavy** (8-thruster vectored configuration) inside the 
 │                                                                      │
 │   ┌──────────────────┐     ┌──────────────────────────────────────┐  │
 │   │  trajectory_node │────▶│           controller_node            │  │
-│   │  Desired State   │     │  FTSMC  │  I-FTSMC  │  │
+│   │  Desired State   │     │           FTSMC  │  I-FTSMC  
 │   └──────────────────┘     └──────────────────┬───────────────────┘  │
 │                                               │  τ (6-DOF forces)    │
 │   ┌──────────────────┐                        ▼                      │
@@ -243,7 +243,7 @@ Values: `1.0` = healthy, `0.0` = complete failure, `(0, 1)` = partial degradatio
 ## Controllers
 
 ### Fast-Terminal Sliding Mode Control (FTSMC)
-Sliding mode controller with a PD-structured sliding surface `s = ė_ν + k₁·sig(e_ν) + k₂·e_ν` and fast-terminal reaching law using a `sig(x, β) = |x|^β · sgn(x)` nonlinearity for fast-terminal convergence.
+Sliding mode controller with a PD-structured sliding surface `s = ė_ν + k₁·sig(e_ν, β) + k₂·e_ν` and fast-terminal reaching law using a `sig(x, β) = |x|^β · sgn(x)` nonlinearity for fast-terminal convergence.
 
 - PD sliding surface for improved transient response and reduced overshoot
 - Parameters tunable per DOF for surge/sway/heave vs roll/pitch/yaw
@@ -253,7 +253,7 @@ Sliding mode controller with a PD-structured sliding surface `s = ė_ν + k₁·
 ### Integral Fast-Terminal Sliding Mode Control (I-FTSMC)
 FTSMC variant with a PI-Sig sliding surface that adds an integral term with anti-windup clamping for improved steady-state accuracy.
 
-- PI-Sig sliding surface: `s = e_ν + K_i ∫(e_ν + Γ·sig(e_ν))dt`
+- PI-Sig sliding surface: `s = e_ν + K_i ∫(e_ν + Γ·sig(e_ν, β))dt`
 - Kinematic-dynamic cascade: position error drives a virtual velocity command, velocity error feeds the sliding surface
 - Better steady-state performance than standard FTSMC at the cost of added integral state
 - Robust against parametric uncertainty and external disturbances
