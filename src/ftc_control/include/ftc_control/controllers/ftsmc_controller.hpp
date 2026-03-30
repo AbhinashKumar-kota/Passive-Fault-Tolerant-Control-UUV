@@ -17,7 +17,7 @@ public:
 
     FTSMCController();
 
-    /// @brief Compute finite-time sliding mode control law
+    /// @brief Compute fast-terminal sliding mode control law
     Eigen::Matrix<double, 6, 1> compute_ftsmc(
         const Eigen::Matrix<double, 6, 1>& eta,
         const Eigen::Matrix<double, 6, 1>& eta_d,

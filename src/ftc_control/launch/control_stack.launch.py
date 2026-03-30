@@ -23,8 +23,8 @@ def generate_launch_description():
 
     controller_type_arg = DeclareLaunchArgument(
         'controller_type',
-        default_value='backstepping',
-        description='Controller type: backstepping, ftsmc, i_ftsmc'
+        default_value='ftsmc',
+        description='Controller type: ftsmc, i_ftsmc'
     )
 
     trajectory_type_arg = DeclareLaunchArgument(
@@ -47,7 +47,6 @@ def generate_launch_description():
 
     pkg_share = FindPackageShare('ftc_control')
 
-    backstepping_config = PathJoinSubstitution([pkg_share, 'config', 'backstepping.yaml'])
     smc_config = PathJoinSubstitution([pkg_share, 'config', 'smc.yaml'])
     faults_config = PathJoinSubstitution([pkg_share, 'config', 'faults.yaml'])
 
@@ -85,7 +84,6 @@ def generate_launch_description():
                 'rate': 50.0,
                 'controller_type': controller_type,
             },
-            backstepping_config,
             smc_config,
         ]
     )

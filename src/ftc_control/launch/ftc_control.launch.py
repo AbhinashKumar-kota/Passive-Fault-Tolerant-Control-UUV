@@ -10,7 +10,7 @@ def generate_launch_description():
     vehicle_name_arg = DeclareLaunchArgument('vehicle_name', default_value='BLUEROV2')
     vehicle_type_arg = DeclareLaunchArgument('vehicle_type', default_value='bluerov2')
     trajectory_type_arg = DeclareLaunchArgument('trajectory_type', default_value='eight')
-    controller_type_arg = DeclareLaunchArgument('controller_type', default_value='backstepping')
+    controller_type_arg = DeclareLaunchArgument('controller_type', default_value='ftsmc')
 
     state_estimator_node = Node(
         package='ftc_control',

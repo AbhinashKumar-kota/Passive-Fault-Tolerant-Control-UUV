@@ -25,8 +25,8 @@ def generate_launch_description():
 
     controller_type_arg = DeclareLaunchArgument(
         'controller_type',
-        default_value='backstepping',
-        description='Controller type: backstepping, ftsmc, i_ftsmc'
+        default_value='ftsmc',
+        description='Controller type: ftsmc, i_ftsmc'
     )
 
     trajectory_type_arg = DeclareLaunchArgument(

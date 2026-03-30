@@ -29,7 +29,6 @@ include_directories(
 # Library
 add_library(ftc_control_lib
   src/models/auv_dynamics.cpp
-  src/controllers/backstepping.cpp
   src/controllers/ftsmc_controller.cpp
   src/controllers/i_ftsmc_controller.cpp
   src/allocation/thruster_allocation.cpp

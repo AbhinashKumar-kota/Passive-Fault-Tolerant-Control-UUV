@@ -1,6 +1,6 @@
 # Passive Fault-Tolerant Control of Unmanned Underwater Vehicles (UUV)
 
-> A ROS2-based nonlinear control framework for autonomous underwater vehicles featuring passive fault tolerance through thruster redundancy, Lyapunov-stable backstepping, and Finite-Time Sliding Mode Control — validated in high-fidelity Stonefish simulation.
+> A ROS2-based nonlinear control framework for autonomous underwater vehicles featuring passive fault tolerance through thruster redundancy and Fast-Terminal Sliding Mode Control — validated in high-fidelity Stonefish simulation.
 
 ---
 
@@ -8,10 +8,9 @@
 
 Underwater vehicles operating in unstructured ocean environments face a fundamental reliability challenge: **thruster failures**. This project implements a **passive fault-tolerant control (FTC)** system that maintains trajectory tracking performance in the presence of thruster faults — without requiring explicit fault detection or controller reconfiguration.
 
-The framework is built around two nonlinear control strategies:
+The framework is built around nonlinear control strategies:
 
-- **Backstepping Control** — Lyapunov-based recursive design guaranteeing asymptotic stability
-- **Finite-Time Sliding Mode Control (FTSMC)** — Robust sliding mode controller achieving finite-time convergence with chattering suppression via boundary layer saturation
+- **Fast-Terminal Sliding Mode Control (FTSMC)** — Robust sliding mode controller achieving fast-terminal convergence with chattering suppression via boundary layer saturation
 
 Both controllers operate on a full **6-DOF hydrodynamic model** formulated using Fossen's equations of motion, with passive fault accommodation handled at the thruster allocation layer via pseudo-inverse redistribution.
 
@@ -34,7 +33,7 @@ Tested on the **BlueROV2 Heavy** (8-thruster vectored configuration) inside the 
 │                                                                      │
 │   ┌──────────────────┐     ┌──────────────────────────────────────┐  │
 │   │  trajectory_node │────▶│           controller_node            │  │
-│   │  Desired State   │     │  Backstepping  │  FTSMC  │  I-FTSMC  │  │
+│   │  Desired State   │     │  FTSMC  │  I-FTSMC  │  │
 │   └──────────────────┘     └──────────────────┬───────────────────┘  │
 │                                               │  τ (6-DOF forces)    │
 │   ┌──────────────────┐                        ▼                      │
@@ -59,7 +58,7 @@ Passive-Fault-Tolerant-Control-UUV/
 └── src/
     ├── ftc_control/               # Core control system (C++17)
     │   ├── include/ftc_control/
-    │   │   ├── controllers/       # backstepping, ftsmc, i_ftsmc
+    │   │   ├── controllers/       # ftsmc, i_ftsmc
     │   │   ├── models/            # 6-DOF AUV dynamics (Fossen)
     │   │   ├── allocation/        # Pseudo-inverse thruster allocation
     │   │   └── utils/             # Math utilities, frame transforms
@@ -187,19 +186,19 @@ source install/setup.bash
 
 ### Launch Full Simulation
 ```bash
-# Default: BlueROV2 | Backstepping controller | Hover trajectory
+# Default: BlueROV2 | FTSMC controller | Hover trajectory
 ros2 launch ftc_simulation full_simulation.launch.py
 ```
 
 ### Select Controller and Trajectory
 ```bash
-# FTSMC controller with 3D figure-eight trajectory
+# FTSMC controller with 3D figure-eight trajectory (already default)
 ros2 launch ftc_simulation full_simulation.launch.py \
-  controller_type:=ftsmc trajectory_type:=eight
+  trajectory_type:=eight
 
-# Backstepping with lawnmower survey pattern
+# I-FTSMC controller with lawnmower survey pattern
 ros2 launch ftc_simulation full_simulation.launch.py \
-  controller_type:=backstepping trajectory_type:=lawnmower
+  controller_type:=i_ftsmc trajectory_type:=lawnmower
 
 # Headless mode (no GUI window)
 ros2 launch ftc_simulation full_simulation.launch.py \
@@ -210,7 +209,7 @@ ros2 launch ftc_simulation full_simulation.launch.py \
 
 | Argument | Options | Default |
 |----------|---------|---------|
-| `controller_type` | `backstepping`, `ftsmc`, `i_ftsmc` | `backstepping` |
+| `controller_type` | `ftsmc`, `i_ftsmc` | `ftsmc` |
 | `trajectory_type` | `hover`, `eight`, `lawnmower`, `waypoint` | `hover` |
 | `robot_name` | any string | `BLUEROV2` |
 | `robot_type` | `bluerov2`, `girona500` | `bluerov2` |
@@ -243,21 +242,15 @@ Values: `1.0` = healthy, `0.0` = complete failure, `(0, 1)` = partial degradatio
 
 ## Controllers
 
-### Backstepping
-A Lyapunov-based recursive nonlinear controller. Virtual control laws are designed at each step to ensure stability of the cascaded system. Guarantees asymptotic tracking under smooth trajectories.
-
-- Gain matrices `K1`, `K2` tunable via `config/backstepping.yaml`
-- Suitable for nominal operating conditions
-
-### Finite-Time Sliding Mode Control (FTSMC)
-Sliding mode controller with a PD-structured sliding surface `s = ė_ν + k₁·sig(e_ν) + k₂·e_ν` and finite-time reaching law using a `sig(x, β) = |x|^β · sgn(x)` nonlinearity for finite-time convergence.
+### Fast-Terminal Sliding Mode Control (FTSMC)
+Sliding mode controller with a PD-structured sliding surface `s = ė_ν + k₁·sig(e_ν) + k₂·e_ν` and fast-terminal reaching law using a `sig(x, β) = |x|^β · sgn(x)` nonlinearity for fast-terminal convergence.
 
 - PD sliding surface for improved transient response and reduced overshoot
 - Parameters tunable per DOF for surge/sway/heave vs roll/pitch/yaw
 - Full 6-DOF Fossen hydrodynamic model in the control law (M, C, D, g)
 - Robust against parametric uncertainty and external disturbances
 
-### Integral Finite-Time Sliding Mode Control (I-FTSMC)
+### Integral Fast-Terminal Sliding Mode Control (I-FTSMC)
 FTSMC variant with a PI-Sig sliding surface that adds an integral term with anti-windup clamping for improved steady-state accuracy.
 
 - PI-Sig sliding surface: `s = e_ν + K_i ∫(e_ν + Γ·sig(e_ν))dt`

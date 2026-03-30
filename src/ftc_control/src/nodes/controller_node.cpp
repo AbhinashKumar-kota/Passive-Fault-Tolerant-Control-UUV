@@ -3,7 +3,6 @@
 #include <std_msgs/msg/float64_multi_array.hpp>
 #include <Eigen/Dense>
 
-#include "ftc_control/controllers/backstepping.hpp"
 #include "ftc_control/controllers/ftsmc_controller.hpp"
 #include "ftc_control/controllers/i_ftsmc_controller.hpp"
 #include "ftc_control/allocation/thruster_allocation.hpp"
@@ -15,17 +14,13 @@ class ControllerNode : public rclcpp::Node {
 public:
     ControllerNode() : Node("controller_node") {
         this->declare_parameter("vehicle_name", "BLUEROV2");
-        this->declare_parameter("controller_type", "backstepping");
+        this->declare_parameter("controller_type", "ftsmc");
 
         vehicle_name_ = this->get_parameter("vehicle_name").as_string();
         controller_type_ = this->get_parameter("controller_type").as_string();
 
-        backstepping_controller_ = std::make_unique<controllers::backstepping>();
         ftsmc_controller_ = std::make_unique<controllers::FTSMCController>();
         i_ftsmc_controller_ = std::make_unique<controllers::IFTSMCController>();
-
-        K1_.diagonal() << 0.7, 0.7, 0.7, 1.0, 1.0, 1.0;
-        K2_.diagonal() << 8.0, 8.0, 8.0, 8.0, 8.0, 8.0;
 
         state_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
             "/FTC/estimated_state", 10,
@@ -55,15 +50,13 @@ private:
                 eta_d_(0), eta_d_(1), eta_d_(2), eta_d_(5));
         }
 
-        if (controller_type_ == "backstepping") {
-            tau = backstepping_controller_->compute_backstepping_full(eta_, eta_d_, eta_d_dot_, nu_, K1_, K2_);
-        } else if (controller_type_ == "ftsmc") {
+        if (controller_type_ == "ftsmc") {
             tau = ftsmc_controller_->compute_ftsmc(eta_, eta_d_, eta_d_dot_, nu_, 0.02);
         } else if (controller_type_ == "i_ftsmc") {
             tau = i_ftsmc_controller_->compute_i_ftsmc(eta_, eta_d_, eta_d_dot_, nu_, 0.02);
         } else {
             RCLCPP_WARN(this->get_logger(),
-                "Unknown controller type: %s. Valid options: backstepping, ftsmc, i_ftsmc",
+                "Unknown controller type: %s. Valid options: ftsmc, i_ftsmc",
                 controller_type_.c_str());
         }
 
@@ -112,7 +105,6 @@ private:
     std::string vehicle_name_;
     std::string controller_type_;
 
-    std::unique_ptr<controllers::backstepping> backstepping_controller_;
     std::unique_ptr<controllers::FTSMCController> ftsmc_controller_;
     std::unique_ptr<controllers::IFTSMCController> i_ftsmc_controller_;
 
@@ -120,8 +112,6 @@ private:
     Eigen::Matrix<double, 6, 1> nu_ = Eigen::Matrix<double, 6, 1>::Zero();
     Eigen::Matrix<double, 6, 1> eta_d_ = Eigen::Matrix<double, 6, 1>::Zero();
     Eigen::Matrix<double, 6, 1> eta_d_dot_ = Eigen::Matrix<double, 6, 1>::Zero();
-
-    Eigen::DiagonalMatrix<double, 6> K1_, K2_;
 
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr state_sub_, target_sub_;
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr tau_pub_;
